@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  # ─── PostgreSQL Database ──────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: authplatform-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: authplatform
+      POSTGRES_PASSWORD: authplatform_secret
+      POSTGRES_DB: authplatform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authplatform -d authplatform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Next.js Application ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: authplatform-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://authplatform:authplatform_secret@postgres:5432/authplatform
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-strong-random-secret-in-production}
+      NEXT_PUBLIC_APP_NAME: AuthPlatform
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        npx prisma db seed &&
+        node server.js
+      "
+
+volumes:
+  postgres_data:
+    driver: local
