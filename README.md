@@ -191,9 +191,6 @@ auth-platform/
 ├── prisma/
 │   ├── schema.prisma          # Database schema (6 models)
 │   └── seed.ts                # Seed script (5 roles + admin user)
-├── docs/
-│   ├── er-diagram.md          # Crow's Foot ER diagram (Mermaid)
-│   └ chen-diagram.md          # Chen notation diagram (Mermaid)
 ├── src/
 │   ├── proxy.ts               # Route guards + role-based access (Next.js 16)
 │   ├── app/
@@ -484,9 +481,9 @@ docker run -p 3000:3000 \
 
 ---
 
-## 📊 Database Schema
+## 📊 ER Diagram
 
-See [ER Diagram](docs/er-diagram.md) for Crow's Foot notation and [Chen Diagram](docs/chen-diagram.md) for Chen notation.
+![ER Diagram](./public/ER_Diagram.png)
 
 ### Models
 
