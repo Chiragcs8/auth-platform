@@ -62,6 +62,7 @@ A production-grade, multi-role authentication and profile management platform bu
 │  │  Server-side: In-memory cache with TTL (ServerCache) │   │
 │  │    → getOrSet() pattern for API routes               │   │
 │  │    → invalidate() on data mutations                  │   │
+│  │    → Dashboard stats invalidated on user toggle      │   │
 │  │    → Per-key TTL (30s–5min based on data stability)  │   │
 │  │                                                       │   │
 │  │  Client-side: Zustand data-store with stale-while-   │   │
@@ -69,6 +70,7 @@ A production-grade, multi-role authentication and profile management platform bu
 │  │    → useCachedFetch hook for all data pages          │   │
 │  │    → Fresh data shown instantly, background refresh  │   │
 │  │    → refetch() for manual cache invalidation         │   │
+│  │    → invalidate() for targeted cache busting         │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 
@@ -117,8 +119,8 @@ A production-grade, multi-role authentication and profile management platform bu
 - ✅ View all users with search and filter (All/Active/Inactive)
 - ✅ Toggle user active/inactive status with one click
 - ✅ Self-deactivation protection (admin cannot deactivate own account)
-- ✅ Server cache invalidation on status change
-- ✅ Client cache refresh after toggle
+- ✅ Server cache invalidation on status change (user list + dashboard stats)
+- ✅ Client cache refresh after toggle (user list + dashboard stats)
 
 ### Dashboards & Pages
 - ✅ **Admin**: Dashboard, Users, Roles, Activity Logs, Profile, Security, Sessions
@@ -155,6 +157,7 @@ A production-grade, multi-role authentication and profile management platform bu
 - ✅ Loading skeletons for all data-fetching pages
 - ✅ Tailwind CSS v4 with CSS variable-based theme system
 - ✅ Clickable "AP" logo on login/register pages → navigates to home page
+- ✅ **Scroll-to-top on navigation** — every route change (logo click, redirect, Link) scrolls to top instantly
 
 ---
 
@@ -177,6 +180,7 @@ A production-grade, multi-role authentication and profile management platform bu
 | Themes | next-themes | 0.4.6 |
 | Notifications | Sonner | 2.0.7 |
 | Image Upload | Cloudinary | 2.x |
+| Env Loading | dotenv | 16.4.7 |
 
 ---
 
@@ -235,6 +239,7 @@ auth-platform/
 │   │   │   ├── avatar.tsx, badge.tsx, button.tsx, card.tsx
 │   │   │   ├── checkbox.tsx, input.tsx, label.tsx, select.tsx
 │   │   │   ├── skeleton.tsx, textarea.tsx, theme-toggle.tsx (animated)
+│   │   │   ├── scroll-to-top.tsx (scrolls to top on route change)
 │   │   │   └── page-transition.tsx
 │   │   ├── dashboard/          # Dashboard-specific components
 │   │   │   ├── dashboard-shell.tsx   # Shell (sidebar + navbar + content)
@@ -268,9 +273,11 @@ auth-platform/
 │   │   └── auth.ts             # Server actions (formSubmit wrapper)
 │   └── types/
 │       └── index.ts            # TypeScript interfaces & types
-├── docker-compose.yml          # PostgreSQL + Next.js containers
-├── Dockerfile                  # Multi-stage production build
-├── .env.example                # Environment variable template
+├── docker-compose.yml          # PostgreSQL + init + Next.js containers
+├── Dockerfile                  # 4-stage build (deps → build → init → runner)
+├── docker-entrypoint.sh        # Production entrypoint script
+├── prisma.config.ts            # Prisma v7 config (datasource URL from env)
+├── .env.example                # Environment variable template (with Docker section)
 ├── .dockerignore               # Docker build exclusions
 ├── next.config.ts              # Next.js config (standalone output)
 ├── package.json                # Dependencies & scripts
@@ -347,9 +354,23 @@ After seeding, the following admin account is created:
 
 ### Quick Start with Docker
 
+1. Create a `.env` file next to `docker-compose.yml` with your secrets:
+
 ```bash
-# Start PostgreSQL + Next.js
-docker compose up -d
+# Required: strong random secret for JWT signing
+AUTH_SECRET="your-strong-random-secret-here"
+
+# Required: Cloudinary credentials for profile image uploads
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
+```
+
+2. Build and start all services:
+
+```bash
+# Start PostgreSQL + init (migrations/seed) + Next.js
+docker compose up --build -d
 
 # View logs
 docker compose logs -f
@@ -358,18 +379,48 @@ docker compose logs -f
 docker compose down
 ```
 
-### Production Build Only
+The `init` container runs migrations and seeds the database, then exits. The `app` container waits for `init` to complete before starting.
+
+### Default Admin Account (after seed)
+
+| Field | Value |
+|---|---|
+| Email | `admin@authplatform.com` |
+| Password | `Admin@123456` |
+
+> ⚠️ **Change this password immediately after first login in production!**
+
+### Docker Architecture
+
+The Docker setup uses a **4-stage build**:
+
+| Stage | Purpose |
+|---|---|
+| `deps` | Install all npm dependencies + generate Prisma client (dummy DATABASE_URL) |
+| `builder` | Build Next.js standalone output |
+| `init` | Full node_modules for `prisma migrate deploy` + `tsx prisma/seed.ts` |
+| `runner` | Minimal production image (standalone server + Prisma generated client) |
+
+Key details:
+- **Prisma v7**: Generated client at `src/generated/prisma` (custom output) is copied to runner stage
+- **Standalone output**: Next.js traces only production dependencies into `.next/standalone`
+- **Init service**: Separate container with full devDependencies (tsx, prisma CLI) for DB setup
+- **Cloudinary env vars**: Passed to app container from `.env` file or defaults
+- **libc6-compat**: Added to runner for `pg` native bindings on Alpine
+- PostgreSQL data persisted in named Docker volume
+
+### Production Build Only (without docker-compose)
 
 ```bash
-docker build -t authplatform .
-docker run -p 3000:3000 authplatform
+docker build --target runner -t authplatform .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
+  -e AUTH_SECRET="your-secret" \
+  -e CLOUDINARY_CLOUD_NAME="your-cloud-name" \
+  -e CLOUDINARY_API_KEY="your-api-key" \
+  -e CLOUDINARY_API_SECRET="your-api-secret" \
+  authplatform
 ```
-
-The Docker setup:
-- Uses multi-stage build (deps → build → production)
-- Runs `prisma migrate deploy` + `prisma db seed` on startup
-- Outputs standalone Next.js server for minimal image size
-- PostgreSQL data persisted in Docker volume
 
 ---
 
@@ -410,6 +461,7 @@ The Docker setup:
 │    → Delete session from DB                                  │
 │    → Delete expired sessions for user                        │
 │    → Clear both cookies                                      │
+│    → Always clear client stores + redirect to /login         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -560,7 +612,7 @@ const stats = await serverCache.getOrSet(dashboardCacheKey('admin'), async () =>
 | `profile:<userId>` | 60s | User profile data |
 | `sessions:<userId>` | 15s | Active sessions (can be revoked) |
 
-**Invalidation**: `serverCache.invalidate(key)` is called after any mutation (e.g., toggling user status invalidates `admin:users`).
+**Invalidation**: `serverCache.invalidate(key)` is called after any mutation. For example, toggling user active/inactive status invalidates both `admin:users` and `dashboard:admin` so the dashboard stats (active/inactive counts) update immediately.
 
 ### Client-Side Cache (`src/store/data-store.ts` + `src/hooks/use-cached-fetch.ts`)
 
