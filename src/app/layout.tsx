@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -21,6 +22,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
         >
+          <ScrollToTop />
           {children}
           <Toaster position="top-right" richColors />
         </ThemeProvider>
