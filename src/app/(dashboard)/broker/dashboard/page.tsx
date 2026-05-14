@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, Handshake, Users, DollarSign, TrendingUp, BarChart3, Clock, Building2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, dashboardKey } from '@/store/data-store';
 
 interface BrokerStats {
   totalClients: number;
@@ -29,41 +30,25 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+interface BrokerDashboardData {
+  stats: BrokerStats;
+  recentDeals: RecentDeal[];
+}
+
 export default function BrokerDashboardPage() {
-  const [stats, setStats] = useState<BrokerStats | null>(null);
-  const [recentDeals, setRecentDeals] = useState<RecentDeal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<BrokerDashboardData>(
+    dashboardKey('broker'),
+    '/api/broker/dashboard',
+    { ttl: CLIENT_TTL.DASHBOARD_STATS }
+  );
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const res = await fetch('/api/broker/dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats);
-          setRecentDeals(data.recentDeals || []);
-        }
-      } catch {
-        setStats({
-          totalClients: 0,
-          activeRelationships: 0,
-          totalCommission: 0,
-          pendingDeals: 0,
-          completedDeals: 0,
-          avgDealValue: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const stats = data?.stats ?? null;
+  const recentDeals = data?.recentDeals ?? [];
 
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -76,8 +61,8 @@ export default function BrokerDashboardPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Broker Dashboard</h1>
-        <p className="text-muted-foreground">Manage client relationships, deals, and commissions</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Broker Dashboard</h1>
+        <p className="text-muted-foreground mt-1">Manage client relationships, deals, and commissions</p>
       </motion.div>
 
       {/* Stats Grid */}
@@ -85,56 +70,64 @@ export default function BrokerDashboardPage() {
         variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         initial="initial"
         animate="animate"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalClients || 0}</div>
-              <p className="text-xs text-muted-foreground">Managed accounts</p>
+              <p className="text-xs text-muted-foreground mt-1">Managed accounts</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Relationships</CardTitle>
-              <Handshake className="h-4 w-4 text-green-500" />
+              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <Handshake className="h-4 w-4 text-green-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.activeRelationships || 0}</div>
-              <p className="text-xs text-muted-foreground">Current partnerships</p>
+              <p className="text-xs text-muted-foreground mt-1">Current partnerships</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Commission</CardTitle>
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-emerald-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">${stats?.totalCommission || 0}</div>
-              <p className="text-xs text-muted-foreground">Total earned</p>
+              <p className="text-xs text-muted-foreground mt-1">Total earned</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Deals</CardTitle>
-              <Clock className="h-4 w-4 text-amber-500" />
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-amber-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.pendingDeals || 0}</div>
-              <p className="text-xs text-muted-foreground">Awaiting completion</p>
+              <p className="text-xs text-muted-foreground mt-1">Awaiting completion</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -145,27 +138,31 @@ export default function BrokerDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-3 sm:gap-6"
       >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed Deals</CardTitle>
-            <Building2 className="h-4 w-4 text-blue-500" />
+            <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-indigo-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.completedDeals || 0}</div>
-            <p className="text-xs text-muted-foreground">Successfully closed</p>
+            <p className="text-xs text-muted-foreground mt-1">Successfully closed</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg. Deal Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-violet-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${stats?.avgDealValue || 0}</div>
-            <p className="text-xs text-muted-foreground">Per transaction</p>
+            <p className="text-xs text-muted-foreground mt-1">Per transaction</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -179,7 +176,7 @@ export default function BrokerDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Handshake className="h-5 w-5" />
+              <Handshake className="h-5 w-5 text-primary" />
               Recent Deals
             </CardTitle>
             <CardDescription>Latest client transactions and partnerships</CardDescription>
@@ -188,16 +185,16 @@ export default function BrokerDashboardPage() {
             {recentDeals.length > 0 ? (
               <div className="space-y-3">
                 {recentDeals.map((deal) => (
-                  <div key={deal.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <Handshake className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{deal.clientName}</p>
-                        <p className="text-xs text-muted-foreground">Deal #{deal.id.slice(0, 8)}</p>
+                  <div key={deal.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{deal.clientName}</p>
+                        <p className="text-xs text-muted-foreground truncate">Deal #{deal.id.slice(0, 8)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium">${deal.amount}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-semibold">${deal.amount}</span>
                       <Badge variant="secondary">{deal.status}</Badge>
                     </div>
                   </div>

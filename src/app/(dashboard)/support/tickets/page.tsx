@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TicketCheck, Search, Filter, Plus, Clock, AlertCircle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, ticketsKey } from '@/store/data-store';
 
 interface TicketItem {
   id: string;
@@ -20,10 +22,9 @@ interface TicketItem {
   updatedAt: string;
 }
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
+interface TicketsData {
+  tickets: TicketItem[];
+}
 
 const statusColors: Record<string, string> = {
   open: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -41,47 +42,33 @@ const priorityColors: Record<string, string> = {
 };
 
 export default function SupportTicketsPage() {
-  const [tickets, setTickets] = useState<TicketItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<TicketsData>(
+    ticketsKey(),
+    '/api/support/tickets',
+    { ttl: CLIENT_TTL.TICKETS }
+  );
+
+  const tickets = data?.tickets ?? [];
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (statusFilter !== 'all') params.set('status', statusFilter);
-        if (search) params.set('search', search);
-
-        const res = await fetch(`/api/support/tickets?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setTickets(data.tickets || []);
-        }
-      } catch {
-        setTickets([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTickets();
-  }, [statusFilter, search]);
-
-  const filteredTickets = tickets.filter((ticket) =>
-    ticket.subject.toLowerCase().includes(search.toLowerCase()) ||
-    ticket.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch = !search ||
+      ticket.subject.toLowerCase().includes(search.toLowerCase()) ||
+      ticket.description.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
-      <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Tickets</h1>
-            <p className="text-muted-foreground">Manage and respond to support requests</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tickets</h1>
+            <p className="text-muted-foreground mt-1">Manage and respond to support requests</p>
           </div>
-          <Button>
+          <Button className="shrink-0">
             <Plus className="h-4 w-4 mr-2" />
             New Ticket
           </Button>
@@ -92,7 +79,7 @@ export default function SupportTicketsPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -102,7 +89,7 @@ export default function SupportTicketsPage() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <select
                   value={statusFilter}
@@ -132,7 +119,7 @@ export default function SupportTicketsPage() {
             <CardDescription>{filteredTickets.length} tickets</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loading && !data) ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-16" />
@@ -146,7 +133,7 @@ export default function SupportTicketsPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="flex items-center justify-between py-3 px-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />

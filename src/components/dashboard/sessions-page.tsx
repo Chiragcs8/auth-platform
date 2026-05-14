@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Key, Monitor, Smartphone, Trash2, Globe, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { useAuthStore } from '@/store/auth-store';
+import { sessionsKey, CLIENT_TTL } from '@/store/data-store';
 
 interface SessionItem {
   id: string;
@@ -17,17 +20,22 @@ interface SessionItem {
   isCurrent: boolean;
 }
 
+interface SessionsApiResponse {
+  success: boolean;
+  sessions: SessionItem[];
+}
+
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
 };
 
 function getDeviceIcon(userAgent: string | null) {
-  if (!userAgent) return <Monitor className="h-5 w-5 text-muted-foreground" />;
+  if (!userAgent) return <Monitor className="h-5 w-5 text-muted-foreground shrink-0" />;
   if (/mobile|android|iphone|ipad/i.test(userAgent)) {
-    return <Smartphone className="h-5 w-5 text-blue-500" />;
+    return <Smartphone className="h-5 w-5 text-blue-500 shrink-0" />;
   }
-  return <Monitor className="h-5 w-5 text-green-500" />;
+  return <Monitor className="h-5 w-5 text-green-500 shrink-0" />;
 }
 
 function getBrowserName(userAgent: string | null): string {
@@ -50,28 +58,16 @@ function getOSName(userAgent: string | null): string {
 }
 
 export function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const userId = useAuthStore((s) => s.session?.userId) || '';
+  const { data, loading, refetch } = useCachedFetch<SessionsApiResponse>(
+    sessionsKey(userId),
+    '/api/sessions',
+    { ttl: CLIENT_TTL.SESSIONS }
+  );
+
+  const sessions = data?.sessions ?? [];
   const [revoking, setRevoking] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const res = await fetch('/api/sessions');
-        if (res.ok) {
-          const data = await res.json();
-          setSessions(data.sessions || []);
-        }
-      } catch {
-        setSessions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSessions();
-  }, []);
 
   const revokeSession = async (sessionId: string) => {
     setRevoking(sessionId);
@@ -82,8 +78,8 @@ export function SessionsPage() {
       const result = await res.json();
 
       if (result.success) {
-        setSessions(sessions.filter((s) => s.id !== sessionId));
         setMessage({ type: 'success', text: 'Session revoked successfully' });
+        refetch();
       } else {
         setMessage({ type: 'error', text: result.message || 'Failed to revoke session' });
       }
@@ -94,7 +90,7 @@ export function SessionsPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -106,8 +102,8 @@ export function SessionsPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Sessions</h1>
-        <p className="text-muted-foreground">Manage your active sessions and revoke unauthorized access</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Sessions</h1>
+        <p className="text-muted-foreground mt-1">Manage your active sessions and revoke unauthorized access</p>
       </motion.div>
 
       {message && (
@@ -129,7 +125,7 @@ export function SessionsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+              <Key className="h-5 w-5 shrink-0" />
               Active Sessions
             </CardTitle>
             <CardDescription>
@@ -156,11 +152,11 @@ export function SessionsPage() {
                       {getDeviceIcon(session.userAgent)}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium truncate">
                             {getBrowserName(session.userAgent)} on {getOSName(session.userAgent)}
                           </p>
                           {session.isCurrent && (
-                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-xs">
+                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-xs shrink-0">
                               Current
                             </Badge>
                           )}
@@ -168,12 +164,12 @@ export function SessionsPage() {
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {session.ipAddress && (
                             <span className="flex items-center gap-1">
-                              <Globe className="h-3 w-3" />
+                              <Globe className="h-3 w-3 shrink-0" />
                               {session.ipAddress}
                             </span>
                           )}
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                            <Clock className="h-3 w-3 shrink-0" />
                             {new Date(session.createdAt).toLocaleDateString()}
                           </span>
                         </div>
@@ -196,7 +192,7 @@ export function SessionsPage() {
                           Revoke
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs shrink-0">
                           Expires {new Date(session.expiresAt).toLocaleDateString()}
                         </Badge>
                       )}
@@ -215,7 +211,7 @@ export function SessionsPage() {
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-amber-500">Security Notice</p>
                 <p className="text-sm text-muted-foreground">
                   If you notice any unfamiliar sessions, revoke them immediately and change your password.

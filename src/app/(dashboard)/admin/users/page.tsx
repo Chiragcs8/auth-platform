@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Search, UserCheck, UserX, Mail, Shield } from 'lucide-react';
+import { Users, Search, UserCheck, UserX, Mail, Shield, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, usersKey, dashboardKey } from '@/store/data-store';
+import { useDataStore } from '@/store/data-store';
+import { useAuthStore } from '@/store/auth-store';
 
 interface UserItem {
   id: string;
@@ -20,50 +24,68 @@ interface UserItem {
   lastLogin: string | null;
 }
 
+interface AdminUsersData {
+  users: UserItem[];
+}
+
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, refetch } = useCachedFetch<AdminUsersData>(
+    usersKey(),
+    '/api/admin/users',
+    { ttl: CLIENT_TTL.USER_LIST }
+  );
+
+  const session = useAuthStore((s) => s.session);
+  const users = data?.users ?? [];
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch('/api/admin/users');
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
-        }
-      } catch {
-        setUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch = user.fullName.toLowerCase().includes(search.toLowerCase()) ||
                           user.email.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || 
+    const matchesFilter = filter === 'all' ||
                           (filter === 'active' && user.isActive) ||
                           (filter === 'inactive' && !user.isActive);
     return matchesSearch && matchesFilter;
   });
 
+  const handleToggleActive = async (userId: string, currentActive: boolean) => {
+    setTogglingId(userId);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, isActive: !currentActive }),
+      });
+      const result = await res.json();
+      if (!result.success) {
+        alert(result.message || 'Failed to toggle user status');
+        return;
+      }
+      // Invalidate client-side dashboard cache so stats update
+      useDataStore.getState().invalidate(dashboardKey('admin'));
+      // Refresh the user list from server
+      await refetch();
+    } catch {
+      alert('Failed to toggle user status');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold">User Management</h1>
-        <p className="text-muted-foreground">View and manage all system users</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
+        <p className="text-muted-foreground mt-1">View and manage all system users</p>
       </motion.div>
 
       {/* Search and Filters */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -73,7 +95,7 @@ export default function AdminUsersPage() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 <Button variant={filter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('all')}>
                   All
                 </Button>
@@ -89,7 +111,7 @@ export default function AdminUsersPage() {
         </Card>
       </motion.div>
 
-      {/* Users Table */}
+      {/* Users List */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Card>
           <CardHeader>
@@ -100,7 +122,7 @@ export default function AdminUsersPage() {
             <CardDescription>Total registered users in the system</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loading && !data) ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="flex items-center gap-4 p-3">
@@ -122,17 +144,17 @@ export default function AdminUsersPage() {
                     transition={{ delay: index * 0.05 }}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Avatar alt={user.fullName} size="sm" />
-                      <div>
-                        <p className="font-medium">{user.fullName}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {user.email}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{user.fullName}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{user.email}</span>
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <Shield className="h-3 w-3" />
                         {user.roleName}
@@ -147,6 +169,22 @@ export default function AdminUsersPage() {
                       ) : (
                         <Badge variant="destructive">Inactive</Badge>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        disabled={togglingId === user.id || (session?.userId === user.id)}
+                        onClick={() => handleToggleActive(user.id, user.isActive)}
+                      >
+                        {togglingId === user.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : user.isActive ? (
+                          <UserX className="h-3 w-3" />
+                        ) : (
+                          <UserCheck className="h-3 w-3" />
+                        )}
+                        {user.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
                     </div>
                   </motion.div>
                 ))}

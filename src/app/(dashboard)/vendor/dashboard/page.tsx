@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, TrendingUp, Users, DollarSign, Package, ShoppingCart, Eye, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, dashboardKey } from '@/store/data-store';
 
 interface VendorStats {
   totalProducts: number;
@@ -29,41 +30,25 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+interface VendorDashboardData {
+  stats: VendorStats;
+  recentOrders: RecentOrder[];
+}
+
 export default function VendorDashboardPage() {
-  const [stats, setStats] = useState<VendorStats | null>(null);
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<VendorDashboardData>(
+    dashboardKey('vendor'),
+    '/api/vendor/dashboard',
+    { ttl: CLIENT_TTL.DASHBOARD_STATS }
+  );
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const res = await fetch('/api/vendor/dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats);
-          setRecentOrders(data.recentOrders || []);
-        }
-      } catch {
-        setStats({
-          totalProducts: 0,
-          activeListings: 0,
-          totalOrders: 0,
-          revenue: 0,
-          pendingOrders: 0,
-          viewsThisWeek: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const stats = data?.stats ?? null;
+  const recentOrders = data?.recentOrders ?? [];
 
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -76,8 +61,8 @@ export default function VendorDashboardPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Vendor Dashboard</h1>
-        <p className="text-muted-foreground">Manage your products, orders, and business analytics</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Vendor Dashboard</h1>
+        <p className="text-muted-foreground mt-1">Manage your products, orders, and business analytics</p>
       </motion.div>
 
       {/* Stats Grid */}
@@ -85,56 +70,64 @@ export default function VendorDashboardPage() {
         variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         initial="initial"
         animate="animate"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Package className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalProducts || 0}</div>
-              <p className="text-xs text-muted-foreground">Products in catalog</p>
+              <p className="text-xs text-muted-foreground mt-1">Products in catalog</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Listings</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-green-500" />
+              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <ShoppingCart className="h-4 w-4 text-green-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.activeListings || 0}</div>
-              <p className="text-xs text-muted-foreground">Currently listed</p>
+              <p className="text-xs text-muted-foreground mt-1">Currently listed</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <Users className="h-4 w-4 text-blue-500" />
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-indigo-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalOrders || 0}</div>
-              <p className="text-xs text-muted-foreground">All time orders</p>
+              <p className="text-xs text-muted-foreground mt-1">All time orders</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-emerald-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">${stats?.revenue || 0}</div>
-              <p className="text-xs text-muted-foreground">Total earnings</p>
+              <p className="text-xs text-muted-foreground mt-1">Total earnings</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -145,27 +138,31 @@ export default function VendorDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-3 sm:gap-6"
       >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-amber-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.pendingOrders || 0}</div>
-            <p className="text-xs text-muted-foreground">Awaiting processing</p>
+            <p className="text-xs text-muted-foreground mt-1">Awaiting processing</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Views This Week</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+              <Eye className="h-4 w-4 text-violet-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.viewsThisWeek || 0}</div>
-            <p className="text-xs text-muted-foreground">Product page views</p>
+            <p className="text-xs text-muted-foreground mt-1">Product page views</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -178,23 +175,26 @@ export default function VendorDashboardPage() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              Recent Orders
+            </CardTitle>
             <CardDescription>Latest customer orders for your products</CardDescription>
           </CardHeader>
           <CardContent>
             {recentOrders.length > 0 ? (
               <div className="space-y-3">
                 {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{order.customerName}</p>
-                        <p className="text-xs text-muted-foreground">Order #{order.id.slice(0, 8)}</p>
+                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{order.customerName}</p>
+                        <p className="text-xs text-muted-foreground truncate">Order #{order.id.slice(0, 8)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium">${order.amount}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-semibold">${order.amount}</span>
                       <Badge variant="secondary">{order.status}</Badge>
                     </div>
                   </div>

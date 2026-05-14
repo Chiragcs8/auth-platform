@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth-store";
+import { useDataStore } from "@/store/data-store";
 import type { SidebarItem, AuthSession } from "@/types";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -49,21 +50,19 @@ interface SidebarProps {
 
 export function Sidebar({ items, session, collapsed = false, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST" });
-      if (res.ok) {
-        router.push("/login");
-      }
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {
-      router.push("/login");
-    } finally {
-      setLoggingOut(false);
+      // Ignore network errors — we still redirect
     }
+    // Always clear client state and redirect, regardless of API response
+    useAuthStore.getState().clearSession();
+    useDataStore.getState().clearAll();
+    window.location.href = "/login";
   };
 
   return (
@@ -142,7 +141,7 @@ export function Sidebar({ items, session, collapsed = false, onCollapsedChange }
                     )}
                   </AnimatePresence>
                   {!collapsed && item.badge && (
-                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                    <span className="ml-auto shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                       {item.badge}
                     </span>
                   )}
@@ -154,7 +153,7 @@ export function Sidebar({ items, session, collapsed = false, onCollapsedChange }
       </nav>
 
       {/* User Info + Logout */}
-      <div className="border-t border-sidebar-border p-4">
+      <div className="border-t border-sidebar-border p-3">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <Avatar
             src={null}
@@ -191,7 +190,7 @@ export function Sidebar({ items, session, collapsed = false, onCollapsedChange }
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 mt-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-red-500 w-full"
+            className="h-8 w-full mt-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-red-500"
             onClick={handleLogout}
             disabled={loggingOut}
             title="Log out"

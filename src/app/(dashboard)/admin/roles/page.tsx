@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, rolesKey } from '@/store/data-store';
 
 interface RoleItem {
   id: string;
   roleName: string;
   userCount: number;
   description: string;
+}
+
+interface RolesData {
+  roles: RoleItem[];
 }
 
 const roleDescriptions: Record<string, string> = {
@@ -21,37 +26,33 @@ const roleDescriptions: Record<string, string> = {
   Broker: 'Facilitate transactions, manage commissions, and analyze market opportunities',
 };
 
-export default function AdminRolesPage() {
-  const [roles, setRoles] = useState<RoleItem[]>([]);
-  const [loading, setLoading] = useState(true);
+const roleColors: Record<string, string> = {
+  Admin: 'bg-red-500/10 text-red-500',
+  Vendor: 'bg-indigo-500/10 text-indigo-500',
+  Client: 'bg-blue-500/10 text-blue-500',
+  'Support Staff': 'bg-amber-500/10 text-amber-500',
+  Broker: 'bg-emerald-500/10 text-emerald-500',
+};
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const res = await fetch('/api/admin/roles');
-        if (res.ok) {
-          const data = await res.json();
-          setRoles(data.roles || []);
-        }
-      } catch {
-        setRoles([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRoles();
-  }, []);
+export default function AdminRolesPage() {
+  const { data, loading } = useCachedFetch<RolesData>(
+    rolesKey(),
+    '/api/admin/roles',
+    { ttl: CLIENT_TTL.ROLE_LIST }
+  );
+
+  const roles = data?.roles ?? [];
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold">Role Management</h1>
-        <p className="text-muted-foreground">View and manage system roles and their permissions</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Role Management</h1>
+        <p className="text-muted-foreground mt-1">View and manage system roles and their permissions</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+          {(loading && !data) ? (
             [...Array(5)].map((_, i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -67,15 +68,17 @@ export default function AdminRolesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="hover:shadow-lg transition-shadow">
+                <Card className="hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" />
+                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${roleColors[role.roleName] || 'bg-primary/10 text-primary'}`}>
+                          <Shield className="h-4 w-4" />
+                        </div>
                         {role.roleName}
                       </CardTitle>
-                      <Badge variant="secondary">
-                        <Users className="h-3 w-3 mr-1" />
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
                         {role.userCount} users
                       </Badge>
                     </div>

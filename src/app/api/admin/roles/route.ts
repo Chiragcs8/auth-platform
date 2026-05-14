@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { serverCache, CACHE_TTL, roleListCacheKey } from '@/lib/cache';
 
 export async function GET() {
   try {
@@ -13,21 +14,23 @@ export async function GET() {
       );
     }
 
-    const roles = await prisma.role.findMany({
-      include: {
-        _count: {
-          select: { users: true },
+    const formattedRoles = await serverCache.getOrSet(roleListCacheKey(), async () => {
+      const roles = await prisma.role.findMany({
+        include: {
+          _count: {
+            select: { users: true },
+          },
         },
-      },
-      orderBy: { roleName: 'asc' },
-    });
+        orderBy: { roleName: 'asc' },
+      });
 
-    const formattedRoles = roles.map((role: { id: string; roleName: string; createdAt: Date; _count: { users: number } }) => ({
-      id: role.id,
-      roleName: role.roleName,
-      userCount: role._count.users,
-      createdAt: role.createdAt.toISOString(),
-    }));
+      return roles.map((role: { id: string; roleName: string; createdAt: Date; _count: { users: number } }) => ({
+        id: role.id,
+        roleName: role.roleName,
+        userCount: role._count.users,
+        createdAt: role.createdAt.toISOString(),
+      }));
+    }, CACHE_TTL.ROLE_LIST);
 
     return NextResponse.json({
       success: true,

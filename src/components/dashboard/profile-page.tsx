@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { profileUpdateSchema, type ProfileUpdateInput } from '@/lib/validations';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { useAuthStore } from '@/store/auth-store';
+import { profileKey, CLIENT_TTL } from '@/store/data-store';
 
 interface ProfileData {
   id: string;
@@ -39,14 +42,26 @@ interface ProfileData {
   } | null;
 }
 
+interface ProfileApiResponse {
+  success: boolean;
+  profile: ProfileData;
+}
+
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
 };
 
 export function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const userId = useAuthStore((s) => s.session?.userId) || '';
+  const { data, loading, refetch } = useCachedFetch<ProfileApiResponse>(
+    profileKey(userId),
+    '/api/profile',
+    { ttl: CLIENT_TTL.PROFILE }
+  );
+
+  const profile = data?.profile ?? null;
+
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -70,39 +85,25 @@ export function ProfilePage() {
     },
   });
 
+  // Populate form when profile data loads
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('/api/profile');
-        if (res.ok) {
-          const data = await res.json();
-          setProfile(data.profile);
-
-          // Populate form
-          form.reset({
-            fullName: data.profile.fullName,
-            phone: data.profile.profileData?.phone || '',
-            address: data.profile.profileData?.address || '',
-            city: data.profile.profileData?.city || '',
-            state: data.profile.profileData?.state || '',
-            country: data.profile.profileData?.country || '',
-            zipCode: data.profile.profileData?.zipCode || '',
-            bio: data.profile.profileData?.bio || '',
-            companyName: data.profile.profileData?.companyName || '',
-            website: data.profile.profileData?.website || '',
-            department: data.profile.profileData?.department || '',
-            brokerage: data.profile.profileData?.brokerage || '',
-          });
-        }
-      } catch {
-        // Use empty defaults
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [form]);
+    if (profile) {
+      form.reset({
+        fullName: profile.fullName,
+        phone: profile.profileData?.phone || '',
+        address: profile.profileData?.address || '',
+        city: profile.profileData?.city || '',
+        state: profile.profileData?.state || '',
+        country: profile.profileData?.country || '',
+        zipCode: profile.profileData?.zipCode || '',
+        bio: profile.profileData?.bio || '',
+        companyName: profile.profileData?.companyName || '',
+        website: profile.profileData?.website || '',
+        department: profile.profileData?.department || '',
+        brokerage: profile.profileData?.brokerage || '',
+      });
+    }
+  }, [profile, form]);
 
   const onSubmit = async (data: ProfileUpdateInput) => {
     setSaving(true);
@@ -119,12 +120,7 @@ export function ProfilePage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Profile updated successfully' });
-        // Refresh profile data
-        const profileRes = await fetch('/api/profile');
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData.profile);
-        }
+        await refetch();
       } else {
         setMessage({ type: 'error', text: result.message || 'Failed to update profile' });
       }
@@ -168,12 +164,7 @@ export function ProfilePage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Profile image updated' });
-        // Refresh profile data
-        const profileRes = await fetch('/api/profile');
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData.profile);
-        }
+        await refetch();
       } else {
         setMessage({ type: 'error', text: result.message || 'Failed to upload image' });
       }
@@ -198,12 +189,7 @@ export function ProfilePage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: 'Profile image removed' });
-        // Refresh profile data
-        const profileRes = await fetch('/api/profile');
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData.profile);
-        }
+        await refetch();
       } else {
         setMessage({ type: 'error', text: result.message || 'Failed to remove image' });
       }
@@ -214,13 +200,13 @@ export function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
           <Skeleton className="h-64" />
-          <Skeleton className="h-64 lg:col-span-2" />
+          <Skeleton className="h-64 sm:col-span-2" />
         </div>
       </div>
     );
@@ -229,8 +215,8 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Profile</h1>
-        <p className="text-muted-foreground">Manage your personal information and preferences</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
+        <p className="text-muted-foreground mt-1">Manage your personal information and preferences</p>
       </motion.div>
 
       {message && (
@@ -247,10 +233,10 @@ export function ProfilePage() {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         {/* Profile Summary Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-4">
                 <div className="relative group">
@@ -297,10 +283,10 @@ export function ProfilePage() {
                 {uploadingImage && (
                   <p className="text-xs text-muted-foreground">Uploading image...</p>
                 )}
-                <div>
-                  <h3 className="text-lg font-semibold">{profile?.fullName}</h3>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold truncate">{profile?.fullName}</h3>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                    <Mail className="h-3 w-3 shrink-0" />
                     {profile?.email}
                   </p>
                 </div>
@@ -324,7 +310,7 @@ export function ProfilePage() {
         </motion.div>
 
         {/* Edit Profile Form */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-2">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="sm:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Edit Profile</CardTitle>
@@ -335,7 +321,7 @@ export function ProfilePage() {
                 {/* Basic Info */}
                 <div className="space-y-4">
                   <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Basic Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="fullName">Full Name</Label>
                       <div className="relative">
@@ -387,7 +373,7 @@ export function ProfilePage() {
                     <MapPin className="h-4 w-4" />
                     Address
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="address">Street Address</Label>
                       <Input id="address" {...form.register('address')} placeholder="Street address" />
@@ -417,7 +403,7 @@ export function ProfilePage() {
                     <Briefcase className="h-4 w-4" />
                     Professional
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="companyName">Company Name</Label>
                       <div className="relative">
@@ -446,7 +432,7 @@ export function ProfilePage() {
                   </div>
                 </div>
 
-                <Button type="submit" disabled={saving} className="w-full">
+                <Button type="submit" disabled={saving} className="w-full h-11">
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Handshake, Search, Plus, Users, Building2, Phone, Mail, Star } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, relationsKey } from '@/store/data-store';
 
 interface RelationshipItem {
   id: string;
@@ -21,10 +23,9 @@ interface RelationshipItem {
   rating: number;
 }
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
+interface RelationshipsData {
+  relationships: RelationshipItem[];
+}
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -34,27 +35,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default function BrokerRelationshipsPage() {
-  const [relationships, setRelationships] = useState<RelationshipItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<RelationshipsData>(
+    relationsKey(),
+    '/api/broker/relationships',
+    { ttl: CLIENT_TTL.RELATIONS }
+  );
+
+  const relationships = data?.relationships ?? [];
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const fetchRelationships = async () => {
-      try {
-        const res = await fetch('/api/broker/relationships');
-        if (res.ok) {
-          const data = await res.json();
-          setRelationships(data.relationships || []);
-        }
-      } catch {
-        setRelationships([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRelationships();
-  }, []);
 
   const filteredRelationships = relationships.filter((r) =>
     r.clientName.toLowerCase().includes(search.toLowerCase()) ||
@@ -64,13 +52,13 @@ export default function BrokerRelationshipsPage() {
 
   return (
     <div className="space-y-6">
-      <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Relationships</h1>
-            <p className="text-muted-foreground">Manage your client partnerships and connections</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Relationships</h1>
+            <p className="text-muted-foreground mt-1">Manage your client partnerships and connections</p>
           </div>
-          <Button>
+          <Button className="shrink-0">
             <Plus className="h-4 w-4 mr-2" />
             Add Client
           </Button>
@@ -105,7 +93,7 @@ export default function BrokerRelationshipsPage() {
             <CardDescription>{filteredRelationships.length} clients</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loading && !data) ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
                   <Skeleton key={i} className="h-20" />
@@ -119,22 +107,22 @@ export default function BrokerRelationshipsPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="flex items-center justify-between py-4 px-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center shrink-0">
                         <Users className="h-5 w-5 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">{rel.clientName}</p>
+                        <p className="text-sm font-medium truncate">{rel.clientName}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Mail className="h-3 w-3" />
+                          <Mail className="h-3 w-3 shrink-0" />
                           <span className="truncate">{rel.clientEmail}</span>
                         </div>
                         {rel.companyName && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Building2 className="h-3 w-3" />
-                            <span>{rel.companyName}</span>
+                            <Building2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{rel.companyName}</span>
                           </div>
                         )}
                       </div>

@@ -31,12 +31,12 @@ export default function BrokerAnalyticsPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Analytics</h1>
-            <p className="text-muted-foreground">Track your brokerage performance and client metrics</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics</h1>
+            <p className="text-muted-foreground mt-1">Track your brokerage performance and client metrics</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
               Filter
@@ -60,25 +60,28 @@ export default function BrokerAnalyticsPage() {
             <CardDescription>Monthly commission and deal trends</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {monthlyData.map((data, index) => (
                 <motion.div
                   key={data.month}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 + index * 0.05 }}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="text-sm font-medium">{data.month}</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="text-right hidden sm:block">
                       <p className="text-sm font-bold">${data.commission}</p>
                       <p className="text-xs text-muted-foreground">{data.deals} deals • {data.clients} new clients</p>
                     </div>
-                    <div className="w-24">
+                    <div className="text-right sm:hidden">
+                      <p className="text-sm font-bold">${data.commission}</p>
+                    </div>
+                    <div className="w-20 sm:w-24">
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
@@ -112,13 +115,13 @@ export default function BrokerAnalyticsPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + index * 0.05 }}
-                  className="flex items-center justify-between py-3 px-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">{segment.segment}</p>
                     <p className="text-xs text-muted-foreground">{segment.count} clients</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="text-sm font-bold">${segment.revenue}</span>
                     <Badge variant="secondary" className="flex items-center gap-1">
                       {segment.trend === 'up' ? (
@@ -138,35 +141,41 @@ export default function BrokerAnalyticsPage() {
 
       {/* Performance Metrics */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+          <Card className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4 text-green-500" />
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Avg. Deal Size</span>
+                <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                </div>
               </div>
               <p className="text-2xl font-bold">$2,450</p>
-              <p className="text-xs text-muted-foreground">+8% from last quarter</p>
+              <p className="text-xs text-muted-foreground mt-1">+8% from last quarter</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="h-4 w-4 text-blue-500" />
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Client Retention</span>
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-blue-500" />
+                </div>
               </div>
               <p className="text-2xl font-bold">92%</p>
-              <p className="text-xs text-muted-foreground">Year-over-year retention</p>
+              <p className="text-xs text-muted-foreground mt-1">Year-over-year retention</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="h-4 w-4 text-emerald-500" />
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Commission Rate</span>
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <DollarSign className="h-4 w-4 text-emerald-500" />
+                </div>
               </div>
               <p className="text-2xl font-bold">3.5%</p>
-              <p className="text-xs text-muted-foreground">Average commission rate</p>
+              <p className="text-xs text-muted-foreground mt-1">Average commission rate</p>
             </CardContent>
           </Card>
         </div>

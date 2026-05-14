@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
         message: 'Login successful',
         data: {
           dashboardPath: result.data?.redirectUrl || '/client/dashboard',
+          userId: result.data?.userId || '',
+          roleName: result.data?.roleName || 'Client',
         },
       },
       { status: 200 }

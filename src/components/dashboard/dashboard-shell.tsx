@@ -47,16 +47,10 @@ export function DashboardShell({ children, sidebarItems, session }: DashboardShe
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content — no margin on mobile, sidebar-width margin on desktop */}
       <div
-        className="transition-all duration-200"
-        style={{
-          marginLeft: collapsed ? 64 : 256,
-        }}
+        className={`transition-all duration-200 ${collapsed ? 'md:ml-[64px]' : 'md:ml-[256px]'}`}
       >
-        <div className="md:hidden">
-          {/* On mobile, no margin-left */}
-        </div>
         <Navbar session={session} onMobileMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="p-4 md:p-6">
           <Breadcrumbs className="mb-4" />

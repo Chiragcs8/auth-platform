@@ -101,8 +101,25 @@
   * {
     @apply border-border;
   }
+  html {
+    transition: color-scheme 0.3s ease;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+  /* Smooth theme transitions for all themed elements */
+  *,
+  *::before,
+  *::after {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  /* Exclude elements where transitions would cause layout issues */
+  input,
+  textarea,
+  select,
+  [data-no-transition] {
+    transition: none !important;
   }
 }

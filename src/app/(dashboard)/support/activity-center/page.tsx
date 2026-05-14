@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Search, Filter, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, activityKey } from '@/store/data-store';
 
 interface ActivityLogItem {
   id: string;
@@ -18,10 +20,9 @@ interface ActivityLogItem {
   createdAt: string;
 }
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
+interface ActivityLogsData {
+  logs: ActivityLogItem[];
+}
 
 const actionColors: Record<string, string> = {
   LOGIN_SUCCESS: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -36,47 +37,39 @@ const actionColors: Record<string, string> = {
 };
 
 export default function SupportActivityCenterPage() {
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<ActivityLogsData>(
+    activityKey(),
+    '/api/admin/activity-logs',
+    { ttl: CLIENT_TTL.ACTIVITY_LOGS }
+  );
+
+  const logs = data?.logs ?? [];
   const [search, setSearch] = useState('');
   const [moduleFilter, setModuleFilter] = useState('all');
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (moduleFilter !== 'all') params.set('module', moduleFilter);
-        if (search) params.set('search', search);
-
-        const res = await fetch(`/api/admin/activity-logs?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setLogs(data.logs || []);
-        }
-      } catch {
-        setLogs([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLogs();
-  }, [moduleFilter, search]);
-
   const modules = ['auth', 'profile', 'admin', 'session', 'password', 'security'];
+
+  const filteredLogs = logs.filter((log) => {
+    const matchesSearch = !search ||
+      log.userName.toLowerCase().includes(search.toLowerCase()) ||
+      log.action.toLowerCase().includes(search.toLowerCase()) ||
+      (log.ipAddress && log.ipAddress.includes(search));
+    const matchesModule = moduleFilter === 'all' || log.module === moduleFilter;
+    return matchesSearch && matchesModule;
+  });
 
   return (
     <div className="space-y-6">
-      <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Activity Center</h1>
-        <p className="text-muted-foreground">Monitor system-wide activity and user events</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Center</h1>
+        <p className="text-muted-foreground mt-1">Monitor system-wide activity and user events</p>
       </motion.div>
 
       {/* Filters */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -86,7 +79,7 @@ export default function SupportActivityCenterPage() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <select
                   value={moduleFilter}
@@ -112,24 +105,24 @@ export default function SupportActivityCenterPage() {
               <Activity className="h-5 w-5" />
               System Activity
             </CardTitle>
-            <CardDescription>{logs.length} events recorded</CardDescription>
+            <CardDescription>{filteredLogs.length} events recorded</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loading && !data) ? (
               <div className="space-y-3">
                 {[...Array(6)].map((_, i) => (
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
-            ) : logs.length > 0 ? (
+            ) : filteredLogs.length > 0 ? (
               <div className="space-y-2">
-                {logs.map((log, index) => (
+                {filteredLogs.map((log, index) => (
                   <motion.div
                     key={log.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="flex items-center justify-between py-3 px-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <Badge
@@ -140,7 +133,7 @@ export default function SupportActivityCenterPage() {
                       </Badge>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{log.userName}</p>
-                        <p className="text-xs text-muted-foreground">{log.module}</p>
+                        <p className="text-xs text-muted-foreground truncate">{log.module}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">

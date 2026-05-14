@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Search, UserCircle, Mail, Shield, CheckCircle2, XCircle, Clock, Phone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -53,15 +54,15 @@ export default function SupportUserLookupPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">User Lookup</h1>
-        <p className="text-muted-foreground">Search for users to assist with account issues</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Lookup</h1>
+        <p className="text-muted-foreground mt-1">Search for users to assist with account issues</p>
       </motion.div>
 
       {/* Search */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -72,12 +73,10 @@ export default function SupportUserLookupPage() {
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 />
               </div>
-              <button
-                onClick={handleSearch}
-                className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
-              >
+              <Button onClick={handleSearch} className="shrink-0 h-9">
+                <Search className="h-4 w-4 mr-2" />
                 Search
-              </button>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -100,28 +99,28 @@ export default function SupportUserLookupPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card>
+                <Card className="hover:shadow-md transition-shadow">
                   <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center shrink-0">
                           <UserCircle className="h-6 w-6 text-primary" />
                         </div>
-                        <div>
-                          <p className="text-lg font-semibold">{user.fullName}</p>
-                          <p className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {user.email}
+                        <div className="min-w-0">
+                          <p className="text-lg font-semibold truncate">{user.fullName}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 min-w-0">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{user.email}</span>
                           </p>
                           {user.phone && (
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
+                              <Phone className="h-3 w-3 shrink-0" />
                               {user.phone}
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 shrink-0">
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Shield className="h-3 w-3" />
                           {user.roleName}

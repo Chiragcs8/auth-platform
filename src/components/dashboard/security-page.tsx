@@ -70,8 +70,8 @@ export function SecurityPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Security</h1>
-        <p className="text-muted-foreground">Manage your password and security settings</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Security</h1>
+        <p className="text-muted-foreground mt-1">Manage your password and security settings</p>
       </motion.div>
 
       {message && (
@@ -88,7 +88,7 @@ export function SecurityPage() {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
         {/* Change Password */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card>
@@ -219,7 +219,7 @@ export function SecurityPage() {
                   )}
                 </div>
 
-                <Button type="submit" disabled={changing} className="w-full">
+                <Button type="submit" disabled={changing} className="w-full h-11">
                   {changing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -248,33 +248,33 @@ export function SecurityPage() {
               <CardDescription>Your account security status and recommendations</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-green-500" />
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Shield className="h-4 w-4 text-green-500 shrink-0" />
                   <span className="text-sm">Password Strength</span>
                 </div>
-                <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Strong</Badge>
+                <Badge className="bg-green-500/10 text-green-500 border-green-500/20 shrink-0">Strong</Badge>
               </div>
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-green-500" />
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Lock className="h-4 w-4 text-green-500 shrink-0" />
                   <span className="text-sm">Encryption</span>
                 </div>
-                <Badge className="bg-green-500/10 text-green-500 border-green-500/20">bcrypt (12 rounds)</Badge>
+                <Badge className="bg-green-500/10 text-green-500 border-green-500/20 shrink-0">bcrypt (12 rounds)</Badge>
               </div>
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-blue-500" />
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <KeyRound className="h-4 w-4 text-blue-500 shrink-0" />
                   <span className="text-sm">Session Auth</span>
                 </div>
-                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">JWT + HttpOnly</Badge>
+                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 shrink-0">JWT + HttpOnly</Badge>
               </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                   <span className="text-sm">Two-Factor Auth</span>
                 </div>
-                <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">Not Enabled</Badge>
+                <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 shrink-0">Not Enabled</Badge>
               </div>
             </CardContent>
           </Card>

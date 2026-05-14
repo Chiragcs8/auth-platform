@@ -6,6 +6,8 @@ import { Bell, Menu, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
+import { useAuthStore } from "@/store/auth-store";
+import { useDataStore } from "@/store/data-store";
 import type { AuthSession } from "@/types";
 
 interface NavbarProps {
@@ -33,17 +35,14 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST" });
-      if (res.ok) {
-        router.push("/login");
-      }
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {
-      // Force redirect even on error
-      router.push("/login");
-    } finally {
-      setLoggingOut(false);
-      setDropdownOpen(false);
+      // Ignore network errors — we still redirect
     }
+    // Always clear client state and redirect, regardless of API response
+    useAuthStore.getState().clearSession();
+    useDataStore.getState().clearAll();
+    window.location.href = "/login";
   };
 
   return (
@@ -62,19 +61,19 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
         {/* Right side actions */}
         <div className="flex items-center gap-2 ml-auto">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
             <Bell className="h-4 w-4" />
           </Button>
 
           {/* User dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative shrink-0" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="hidden md:flex items-center gap-2 ml-2 px-2 py-1 rounded-md hover:bg-accent transition-colors"
             >
               <Avatar src={null} alt={session.fullName} size="sm" />
-              <span className="text-sm font-medium">{session.fullName}</span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <span className="text-sm font-medium max-w-[120px] truncate">{session.fullName}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
             </button>
 
             {/* Mobile avatar (no dropdown, just opens menu) */}
@@ -84,11 +83,11 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
 
             {/* Dropdown menu */}
             {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-md border bg-background shadow-lg z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border bg-background shadow-lg z-50 overflow-hidden">
                 {/* User info header */}
                 <div className="px-4 py-3 border-b bg-accent/50">
-                  <p className="text-sm font-medium">{session.fullName}</p>
-                  <p className="text-xs text-muted-foreground">{session.email}</p>
+                  <p className="text-sm font-medium truncate">{session.fullName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{session.email}</p>
                   <p className="text-xs text-muted-foreground mt-1">{session.roleName}</p>
                 </div>
 
@@ -101,7 +100,7 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
                     }}
                     className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-accent transition-colors"
                   >
-                    <User className="h-4 w-4" />
+                    <User className="h-4 w-4 shrink-0" />
                     Profile
                   </button>
 
@@ -110,7 +109,7 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
                     disabled={loggingOut}
                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4 w-4 shrink-0" />
                     {loggingOut ? "Logging out..." : "Log out"}
                   </button>
                 </div>

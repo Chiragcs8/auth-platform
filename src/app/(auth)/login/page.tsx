@@ -6,8 +6,10 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Loader2, AlertCircle } from 'lucide-react';
 import { loginSchema, type LoginInput } from '@/lib/validations';
+import { prefetchUserData } from '@/lib/prefetch';
+import type { RoleName } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,6 +54,13 @@ export default function LoginPage() {
         return;
       }
 
+      // Prefetch user data into cache (non-blocking — runs in background)
+      const roleName = result.data?.roleName as RoleName | undefined;
+      const userId = result.data?.userId;
+      if (roleName && userId) {
+        prefetchUserData(roleName, userId);
+      }
+
       // Redirect to the appropriate dashboard based on role
       const dashboardPath = result.data?.dashboardPath || '/dashboard';
       router.push(dashboardPath);
@@ -64,125 +73,132 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="border shadow-xl">
-          <CardHeader className="space-y-1 text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground"
-            >
-              <LogIn className="h-6 w-6" />
-            </motion.div>
-            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
-          </CardHeader>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className="border shadow-xl backdrop-blur-sm bg-card/95 overflow-hidden">
+        <CardHeader className="space-y-1 text-center pb-4">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          >
+            <Link href="/" className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90 transition-opacity">
+              <span className="font-bold text-lg">AP</span>
+            </Link>
+          </motion.div>
+          <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
+          <CardDescription className="text-muted-foreground/80">Sign in to your account to continue</CardDescription>
+        </CardHeader>
 
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-                >
-                  {error}
-                </motion.div>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </motion.div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                autoComplete="email"
+                disabled={isLoading}
+                className="h-11 transition-colors"
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.email.message}
+                </p>
               )}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <div className="relative">
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  autoComplete="email"
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
                   disabled={isLoading}
-                  {...register('email')}
+                  className="h-11 pr-10 transition-colors"
+                  {...register('password')}
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                    {...register('password')}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="rememberMe"
-                    onCheckedChange={(checked) => {
-                      setValue('rememberMe', checked as boolean);
-                    }}
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="rememberMe" className="text-sm cursor-pointer">Remember me</Label>
-                </div>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-11 w-11 px-0 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
-                  Forgot password?
-                </Link>
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
               </div>
+              {errors.password && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <LogIn className="mr-2 h-4 w-4" />
-                )}
-                Sign In
-              </Button>
-            </form>
-          </CardContent>
-
-          <CardFooter className="flex justify-center">
-            <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link href="/register" className="text-primary hover:underline font-medium">
-                Sign up
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="rememberMe"
+                  onCheckedChange={(checked) => {
+                    setValue('rememberMe', checked as boolean);
+                  }}
+                  disabled={isLoading}
+                />
+                <Label htmlFor="rememberMe" className="text-sm cursor-pointer">Remember me</Label>
+              </div>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-primary hover:underline underline-offset-4"
+              >
+                Forgot password?
               </Link>
-            </p>
-          </CardFooter>
-        </Card>
-      </motion.div>
-    </div>
+            </div>
+
+            <Button type="submit" className="w-full h-11 text-sm font-medium" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LogIn className="mr-2 h-4 w-4" />
+              )}
+              Sign In
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="flex justify-center pb-6">
+          <p className="text-sm text-muted-foreground">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-primary hover:underline underline-offset-4 font-medium">
+              Sign up
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+    </motion.div>
   );
 }

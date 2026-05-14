@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Shield, Activity, Key, TrendingUp, UserCheck, UserX, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, dashboardKey } from '@/store/data-store';
 
 interface DashboardStats {
   totalUsers: number;
@@ -30,42 +31,25 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+interface AdminDashboardData {
+  stats: DashboardStats;
+  recentActivity: RecentActivity[];
+}
+
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<AdminDashboardData>(
+    dashboardKey('admin'),
+    '/api/admin/dashboard',
+    { ttl: CLIENT_TTL.DASHBOARD_STATS }
+  );
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const res = await fetch('/api/admin/dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats);
-          setRecentActivity(data.recentActivity || []);
-        }
-      } catch (err) {
-        // Use default stats on error
-        setStats({
-          totalUsers: 0,
-          activeUsers: 0,
-          inactiveUsers: 0,
-          totalRoles: 5,
-          recentLogins: 0,
-          pendingVerifications: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const stats = data?.stats ?? null;
+  const recentActivity = data?.recentActivity ?? [];
 
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -78,8 +62,8 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">System overview and management controls</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="text-muted-foreground mt-1">System overview and management controls</p>
       </motion.div>
 
       {/* Stats Grid */}
@@ -87,56 +71,64 @@ export default function AdminDashboardPage() {
         variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         initial="initial"
         animate="animate"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">All registered accounts</p>
+              <p className="text-xs text-muted-foreground mt-1">All registered accounts</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <UserCheck className="h-4 w-4 text-green-500" />
+              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <UserCheck className="h-4 w-4 text-green-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.activeUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">Currently active accounts</p>
+              <p className="text-xs text-muted-foreground mt-1">Currently active accounts</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Inactive Users</CardTitle>
-              <UserX className="h-4 w-4 text-destructive" />
+              <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <UserX className="h-4 w-4 text-red-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.inactiveUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">Deactivated accounts</p>
+              <p className="text-xs text-muted-foreground mt-1">Deactivated accounts</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Roles</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
+              <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-violet-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalRoles || 5}</div>
-              <p className="text-xs text-muted-foreground">System role types</p>
+              <p className="text-xs text-muted-foreground mt-1">System role types</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -147,27 +139,31 @@ export default function AdminDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-3 sm:gap-6"
       >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recent Logins</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.recentLogins || 0}</div>
-            <p className="text-xs text-muted-foreground">Last 24 hours</p>
+            <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Verifications</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-amber-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.pendingVerifications || 0}</div>
-            <p className="text-xs text-muted-foreground">Awaiting email verification</p>
+            <p className="text-xs text-muted-foreground mt-1">Awaiting email verification</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -180,22 +176,25 @@ export default function AdminDashboardPage() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Recent Activity
+            </CardTitle>
             <CardDescription>Latest system events and user actions</CardDescription>
           </CardHeader>
           <CardContent>
             {recentActivity.length > 0 ? (
               <div className="space-y-3">
                 {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <Activity className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{activity.action}</p>
-                        <p className="text-xs text-muted-foreground">{activity.userName} • {activity.module}</p>
+                  <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground truncate">{activity.userName} • {activity.module}</p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs shrink-0">
                       {new Date(activity.createdAt).toLocaleDateString()}
                     </Badge>
                   </div>

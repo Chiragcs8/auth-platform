@@ -1,5 +1,7 @@
 # AuthPlatform — Multi-Role Authentication & Profile Management
 
+**🚀 Live Demo**: [https://auth-platform-three.vercel.app/](https://auth-platform-three.vercel.app/)
+
 A production-grade, multi-role authentication and profile management platform built with **Next.js 16**, **Prisma 7**, **PostgreSQL**, and modern SaaS-grade UI. Supports 5 distinct roles (Admin, Vendor, Client, Support Staff, Broker) each with dedicated dashboards, protected routes, and role-specific features.
 
 ---
@@ -50,9 +52,23 @@ A production-grade, multi-role authentication and profile management platform bu
 │  │  → HttpOnly Secure Cookies → Session in DB           │   │
 │  │  → Proxy guard → Layout guard → Page render         │   │
 │  │                                                       │   │
-│  │  Forgot Password → Reset Token (1hr expiry)          │   │
+│  │  Forgot Password → Verify Current Password → Token   │   │
 │  │  Email Verification → Token-based verification       │   │
 │  │  Session Management → List/Revoke sessions           │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │              Caching Architecture                     │   │
+│  │  Server-side: In-memory cache with TTL (ServerCache) │   │
+│  │    → getOrSet() pattern for API routes               │   │
+│  │    → invalidate() on data mutations                  │   │
+│  │    → Per-key TTL (30s–5min based on data stability)  │   │
+│  │                                                       │   │
+│  │  Client-side: Zustand data-store with stale-while-   │   │
+│  │    revalidate pattern                                 │   │
+│  │    → useCachedFetch hook for all data pages          │   │
+│  │    → Fresh data shown instantly, background refresh  │   │
+│  │    → refetch() for manual cache invalidation         │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 
@@ -80,7 +96,7 @@ A production-grade, multi-role authentication and profile management platform bu
 - ✅ Custom JWT authentication (no third-party providers)
 - ✅ Register with email, full name, password
 - ✅ Login with email/password + "Remember me" option
-- ✅ Forgot password → email-based reset token (1-hour expiry)
+- ✅ Forgot password → current password verification + reset token (1-hour expiry)
 - ✅ Reset password with token verification
 - ✅ Email verification flow
 - ✅ Logout with session cleanup
@@ -97,6 +113,13 @@ A production-grade, multi-role authentication and profile management platform bu
 - ✅ Client-side session refresh on dashboard entry
 - ✅ Role-specific sidebar navigation
 
+### User Management (Admin)
+- ✅ View all users with search and filter (All/Active/Inactive)
+- ✅ Toggle user active/inactive status with one click
+- ✅ Self-deactivation protection (admin cannot deactivate own account)
+- ✅ Server cache invalidation on status change
+- ✅ Client cache refresh after toggle
+
 ### Dashboards & Pages
 - ✅ **Admin**: Dashboard, Users, Roles, Activity Logs, Profile, Security, Sessions
 - ✅ **Vendor**: Dashboard, Analytics, Profile, Security, Sessions
@@ -106,16 +129,32 @@ A production-grade, multi-role authentication and profile management platform bu
 
 ### Profile Management (Shared Components)
 - ✅ Profile page with edit form (Basic Info, Address, Professional)
+- ✅ Profile image upload via **Cloudinary** (face-aware cropping, server-side upload)
+- ✅ Profile image deletion (Cloudinary cleanup + DB field clear)
 - ✅ Security page with change password form + strength indicators
 - ✅ Sessions page with device detection + session revocation
 
+### Caching Infrastructure
+- ✅ **Server-side**: In-memory `ServerCache` with TTL per data type
+  - Dashboard stats: 1 min, User list: 30s, Roles: 5 min, Activity logs: 30s
+  - `getOrSet()` pattern avoids redundant DB queries
+  - `invalidate()` / `invalidatePattern()` on mutations
+- ✅ **Client-side**: Zustand `DataStore` with stale-while-revalidate
+  - `useCachedFetch` hook for all data-fetching pages
+  - Instant render from cache, background revalidation
+  - `refetch()` for manual invalidation after mutations
+  - Per-key TTL matching server-side cache durations
+
 ### UI/UX
 - ✅ Shadcn/ui-style custom components (Card, Button, Input, Badge, etc.)
-- ✅ Framer Motion animations (fadeInUp, staggerContainer)
-- ✅ Dark/Light mode with next-themes
+- ✅ Framer Motion animations (fadeInUp, staggerContainer, page transitions)
+- ✅ **Animated theme toggle** — smooth icon rotation/scale transition between Sun ↔ Moon
+- ✅ **Smooth theme transitions** — background, text, borders, shadows all animate on dark/light switch
+- ✅ Dark/Light/System mode with next-themes
 - ✅ Responsive design (mobile sidebar overlay, desktop fixed sidebar)
 - ✅ Loading skeletons for all data-fetching pages
 - ✅ Tailwind CSS v4 with CSS variable-based theme system
+- ✅ Clickable "AP" logo on login/register pages → navigates to home page
 
 ---
 
@@ -137,6 +176,7 @@ A production-grade, multi-role authentication and profile management platform bu
 | Styling | Tailwind CSS v4 | 4.x |
 | Themes | next-themes | 0.4.6 |
 | Notifications | Sonner | 2.0.7 |
+| Image Upload | Cloudinary | 2.x |
 
 ---
 
@@ -151,15 +191,15 @@ auth-platform/
 │   ├── er-diagram.md          # Crow's Foot ER diagram (Mermaid)
 │   └ chen-diagram.md          # Chen notation diagram (Mermaid)
 ├── src/
-│   ├── middleware.ts           # Route guards + role-based access
+│   ├── proxy.ts               # Route guards + role-based access (Next.js 16)
 │   ├── app/
-│   │   ├── layout.tsx          # Root layout (ThemeProvider, fonts)
+│   │   ├── layout.tsx          # Root layout (ThemeProvider, theme transitions)
 │   │   ├── page.tsx            # Landing page
-│   │   ├── globals.css         # Tailwind v4 CSS theme variables
+│   │   ├── globals.css         # Tailwind v4 CSS theme variables + transition rules
 │   │   ├── (auth)/             # Auth route group
 │   │   │   ├── layout.tsx      # Auth layout (centered card)
-│   │   │   ├── login/          # Login page
-│   │   │   ├── register/       # Register page
+│   │   │   ├── login/          # Login page (AP logo → home)
+│   │   │   ├── register/       # Register page (AP logo → home)
 │   │   │   ├── forgot-password/ # Forgot password page
 │   │   │   ├── reset-password/  # Reset password page
 │   │   │   └── verify-email/    # Email verification page
@@ -167,7 +207,7 @@ auth-platform/
 │   │   │   ├── admin/          # Admin role pages
 │   │   │   │   ├── layout.tsx  # Admin server layout (JWT + role check)
 │   │   │   │   ├── dashboard/  # Admin dashboard
-│   │   │   │   ├── users/      # User management
+│   │   │   │   ├── users/      # User management (active/inactive toggle)
 │   │   │   │   ├── roles/      # Role management
 │   │   │   │   ├── activity-logs/ # Activity log viewer
 │   │   │   │   ├── profile/    # Profile (shared component)
@@ -180,11 +220,13 @@ auth-platform/
 │   │   └── api/                # API routes
 │   │       ├── auth/           # Auth APIs (login, register, etc.)
 │   │       ├── admin/          # Admin APIs (dashboard, users, roles, activity-logs)
+│   │       │   └── users/      # GET list + PATCH toggle active/inactive
 │   │       ├── vendor/         # Vendor APIs (dashboard)
 │   │       ├── client/         # Client APIs (dashboard)
 │   │       ├── support/        # Support APIs (dashboard, tickets, user-lookup)
 │   │       ├── broker/         # Broker APIs (dashboard, relationships)
-│   │       ├── profile/        # Shared profile API
+│   │       ├── profile/        # Shared profile API (GET/PUT)
+│   │       │   └── image/      # Profile image API (POST upload Cloudinary, DELETE remove)
 │   │       ├── security/       # Shared security API (change-password)
 │   │       ├── sessions/       # Shared sessions API
 │   │       └── activity/       # Shared activity API
@@ -192,7 +234,7 @@ auth-platform/
 │   │   ├── ui/                 # Shadcn/ui-style components
 │   │   │   ├── avatar.tsx, badge.tsx, button.tsx, card.tsx
 │   │   │   ├── checkbox.tsx, input.tsx, label.tsx, select.tsx
-│   │   │   ├── skeleton.tsx, textarea.tsx, theme-toggle.tsx
+│   │   │   ├── skeleton.tsx, textarea.tsx, theme-toggle.tsx (animated)
 │   │   │   └── page-transition.tsx
 │   │   ├── dashboard/          # Dashboard-specific components
 │   │   │   ├── dashboard-shell.tsx   # Shell (sidebar + navbar + content)
@@ -207,15 +249,21 @@ auth-platform/
 │   │       └── theme-provider.tsx     # next-themes provider
 │   ├── config/
 │   │   └── constants.ts        # App constants, sidebar items, route maps
+│   ├── hooks/
+│   │   └── use-cached-fetch.ts # Cached data fetching hook (stale-while-revalidate)
 │   ├── lib/
 │   │   ├── auth.ts             # JWT auth (create/verify/delete/refresh session)
 │   │   ├── prisma.ts           # Prisma client singleton
+│   │   ├── cache.ts            # Server-side in-memory cache with TTL
+│   │   ├── cloudinary.ts       # Cloudinary upload/delete utilities
+│   │   ├── prefetch.ts         # Route prefetching helpers
 │   │   ├── utils.ts            # Utility functions (cn, formatDate, etc.)
 │   │   └── validations.ts      # Zod validation schemas
 │   ├── services/
 │   │   └── auth.ts             # Auth service (login, register, forgot/reset, verify)
 │   ├── store/
-│   │   └── auth-store.ts       # Zustand auth state store
+│   │   ├── auth-store.ts       # Zustand auth state store
+│   │   └── data-store.ts       # Zustand client-side data cache store
 │   ├── actions/
 │   │   └── auth.ts             # Server actions (formSubmit wrapper)
 │   └── types/
@@ -238,6 +286,7 @@ auth-platform/
 - **Node.js** 20+ 
 - **PostgreSQL** 16+ (or use Docker)
 - **npm** 10+
+- **Cloudinary account** (for profile image uploads — free tier works)
 
 ### 1. Clone & Install
 
@@ -255,6 +304,9 @@ cp .env.example .env
 Edit `.env` and set:
 - `DATABASE_URL` — your PostgreSQL connection string
 - `AUTH_SECRET` — a strong random secret (generate with `openssl rand -base64 32`)
+- `CLOUDINARY_CLOUD_NAME` — your Cloudinary cloud name
+- `CLOUDINARY_API_KEY` — your Cloudinary API key
+- `CLOUDINARY_API_SECRET` — your Cloudinary API secret
 
 ### 3. Database Setup
 
@@ -375,6 +427,8 @@ The Docker setup:
 | Input Validation | Zod v4 schemas on all API inputs |
 | CSRF Protection | SameSite=Lax cookies + POST-only mutations |
 | Password Reset | Time-limited tokens (1-hour expiry) |
+| Image Upload | Server-side Cloudinary upload (no client-side secrets) |
+| Self-Deactivation Guard | Admin cannot deactivate own account |
 
 ---
 
@@ -388,7 +442,7 @@ See [ER Diagram](docs/er-diagram.md) for Crow's Foot notation and [Chen Diagram]
 |---|---|---|
 | **User** | Core user entity | id, fullName, email, passwordHash, roleId, isVerified, isActive |
 | **Role** | Role definition | id, roleName (Admin/Vendor/Client/Support Staff/Broker) |
-| **Profile** | Extended user info | id, userId, phone, address, companyName, bio, preferences |
+| **Profile** | Extended user info | id, userId, phone, address, companyName, bio, profileImage (Cloudinary URL), preferences |
 | **Session** | Active sessions | id, userId, accessToken, refreshToken, expiresAt, ipAddress, userAgent |
 | **PasswordReset** | Reset tokens | id, userId, token, expiresAt |
 | **ActivityLog** | Audit trail | id, userId, action, module, ipAddress, createdAt |
@@ -397,27 +451,35 @@ See [ER Diagram](docs/er-diagram.md) for Crow's Foot notation and [Chen Diagram]
 
 ## 🎨 UI Theme System
 
-The platform uses Tailwind CSS v4 with CSS variable-based theming:
+The platform uses Tailwind CSS v4 with CSS variable-based theming and **smooth animated transitions** between dark and light modes:
 
 ```css
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  /* ... more variables */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  /* ... more HSL variables */
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
   /* ... dark mode overrides */
 }
 ```
+
+### Theme Transition Animation
+
+When switching between dark and light mode, all themed properties animate smoothly:
+
+- **Background color** — 0.3s ease transition
+- **Text color** — 0.3s ease transition
+- **Border color** — 0.3s ease transition
+- **Box shadow** — 0.3s ease transition
+- **Theme toggle icon** — Framer Motion scale + rotation animation (Sun ↔ Moon)
+
+The `ThemeProvider` in `layout.tsx` does NOT use `disableTransitionOnChange`, allowing CSS transitions to play on theme switch. Form inputs (`input`, `textarea`, `select`) are excluded from transitions to prevent focus/typing lag.
 
 ---
 
@@ -430,7 +492,7 @@ The platform uses Tailwind CSS v4 with CSS variable-based theming:
 | `/api/auth/login` | POST | Login with email/password |
 | `/api/auth/register` | POST | Register new user |
 | `/api/auth/logout` | POST | Logout + session cleanup |
-| `/api/auth/forgot-password` | POST | Request password reset token |
+| `/api/auth/forgot-password` | POST | Verify current password & get reset token |
 | `/api/auth/reset-password` | POST | Reset password with token |
 | `/api/auth/verify-email` | POST | Verify email with token |
 | `/api/auth/session` | GET | Get current session info |
@@ -441,6 +503,7 @@ The platform uses Tailwind CSS v4 with CSS variable-based theming:
 |---|---|---|
 | `/api/admin/dashboard` | GET | Admin dashboard stats |
 | `/api/admin/users` | GET | List all users with search/filter |
+| `/api/admin/users` | PATCH | Toggle user active/inactive status |
 | `/api/admin/roles` | GET | List all roles with user counts |
 | `/api/admin/activity-logs` | GET | Activity logs with search/filter/pagination |
 
@@ -467,8 +530,68 @@ The platform uses Tailwind CSS v4 with CSS variable-based theming:
 | Route | Method | Description |
 |---|---|---|
 | `/api/profile` | GET/PUT | View/update user profile |
+| `/api/profile/image` | POST | Upload profile image (Cloudinary) |
+| `/api/profile/image` | DELETE | Remove profile image (Cloudinary cleanup) |
 | `/api/security/change-password` | PUT | Change password |
 | `/api/sessions` | GET/DELETE | List/revoke sessions |
+
+---
+
+## ⚡ Caching Architecture
+
+### Server-Side Cache (`src/lib/cache.ts`)
+
+An in-memory `ServerCache` class with TTL support, used by all API routes:
+
+```typescript
+// Example: Admin dashboard stats
+const stats = await serverCache.getOrSet(dashboardCacheKey('admin'), async () => {
+  return computeDashboardStats();
+}, CACHE_TTL.DASHBOARD_STATS); // 1 minute TTL
+```
+
+| Cache Key | TTL | Purpose |
+|---|---|---|
+| `dashboard:<role>` | 60s | Dashboard statistics per role |
+| `admin:users` | 30s | User list (invalidated on active/inactive toggle) |
+| `admin:roles` | 5min | Role list (rarely changes) |
+| `admin:activity` | 30s | Admin activity logs |
+| `activity:<userId>` | 30s | Per-user activity logs |
+| `profile:<userId>` | 60s | User profile data |
+| `sessions:<userId>` | 15s | Active sessions (can be revoked) |
+
+**Invalidation**: `serverCache.invalidate(key)` is called after any mutation (e.g., toggling user status invalidates `admin:users`).
+
+### Client-Side Cache (`src/store/data-store.ts` + `src/hooks/use-cached-fetch.ts`)
+
+A Zustand store implementing **stale-while-revalidate** pattern:
+
+```typescript
+// Example: Admin users page
+const { data, loading, refetch } = useCachedFetch<AdminUsersData>(
+  usersKey(),
+  '/api/admin/users',
+  { ttl: CLIENT_TTL.USER_LIST }
+);
+```
+
+- **First render**: Fetches from API, stores in Zustand with TTL
+- **Subsequent renders**: Returns cached data instantly, revalidates in background if stale
+- **After mutations**: Call `refetch()` to force fresh data from server
+
+---
+
+## 🖼️ Cloudinary Integration
+
+Profile image uploads use **Cloudinary** for cloud-based image storage and optimization:
+
+- **Upload**: Server-side upload via `cloudinary` npm package (no API secrets exposed to client)
+  - Face-aware cropping (`gravity: "face"`) for profile images
+  - 200×200 thumbnail transformation
+  - Stored in `profile_images/<userId>` folder
+- **Delete**: Server-side deletion via `destroy()` API, removes from Cloudinary and clears DB field
+- **Storage**: Cloudinary URL stored in `Profile.profileImage` field (replaces base64 encoding)
+- **Environment**: Requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` in `.env`
 
 ---
 
@@ -501,7 +624,9 @@ npm run db:reset     # Reset database (destructive!)
 5. Create layout in `src/app/(dashboard)/<role>/layout.tsx`
 6. Create dashboard pages under `src/app/(dashboard)/<role>/`
 7. Create API routes under `src/app/api/<role>/`
-8. Run `npm run db:migrate` and `npm run db:seed`
+8. Add cache key builder and TTL constant in [`src/lib/cache.ts`](src/lib/cache.ts)
+9. Add client cache key and TTL constant in [`src/store/data-store.ts`](src/store/data-store.ts)
+10. Run `npm run db:migrate` and `npm run db:seed`
 
 ### Adding Domain-Specific Models
 
@@ -509,8 +634,9 @@ The current schema covers auth, profiles, sessions, and activity logs. To add do
 
 1. Add models to [`prisma/schema.prisma`](prisma/schema.prisma)
 2. Run `npm run db:migrate` to create the migration
-3. Update the role-specific dashboard API routes to query new models
-4. Update the role-specific dashboard pages to display new data
+3. Add cache key builder and TTL in [`src/lib/cache.ts`](src/lib/cache.ts)
+4. Update the role-specific dashboard API routes to query new models (use `serverCache.getOrSet()`)
+5. Update the role-specific dashboard pages to display new data (use `useCachedFetch`)
 
 ---
 
@@ -521,13 +647,15 @@ The current schema covers auth, profiles, sessions, and activity logs. To add do
 - [ ] Set `NODE_ENV=production`
 - [ ] Enable `secure: true` on cookies (automatic when `NODE_ENV=production`)
 - [ ] Configure proper PostgreSQL connection with SSL
-- [ ] Set up email service for password reset & email verification
+- [ ] Configure password reset flow (current password verification + token-based reset)
 - [ ] Configure CORS if needed
 - [ ] Set up monitoring and logging
 - [ ] Enable rate limiting on auth endpoints
 - [ ] Review and restrict database permissions
 - [ ] Set up HTTPS with proper SSL certificates
 - [ ] Configure backup strategy for PostgreSQL
+- [ ] Set Cloudinary environment variables (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`)
+- [ ] Review Cloudinary upload limits and transformation settings
 
 ---
 

@@ -88,7 +88,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -102,7 +102,7 @@ export default function LandingPage() {
             </Link>
           </motion.div>
 
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden sm:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#roles" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Roles</a>
             <a href="#security" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Security</a>
@@ -123,7 +123,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
-        <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 py-16 sm:py-20 md:py-32">
           <motion.div
             variants={staggerContainer}
             initial="initial"
@@ -136,14 +136,14 @@ export default function LandingPage() {
               </Badge>
             </motion.div>
 
-            <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl font-bold tracking-tight">
+            <motion.h1 variants={fadeInUp} className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight">
               Authentication & Profile
               <span className="text-primary"> Management</span>
               <br />
               Made <span className="text-primary">Simple</span>
             </motion.h1>
 
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            <motion.p variants={fadeInUp} className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               A complete multi-role platform with 5 distinct user types, enterprise-grade security,
               modern UI, and production-ready architecture. Built with Next.js, PostgreSQL, and Prisma.
             </motion.p>
@@ -162,7 +162,7 @@ export default function LandingPage() {
               </Link>
             </motion.div>
 
-            <motion.div variants={fadeInUp} className="flex items-center justify-center gap-6 pt-4">
+            <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 No credit card required
@@ -181,15 +181,15 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
+      <section id="features" className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose AuthPlatform?</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Why Choose AuthPlatform?</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Built from the ground up with modern technologies and best practices for
               production-grade authentication and profile management.
@@ -201,7 +201,7 @@ export default function LandingPage() {
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
           >
             {features.map((feature, index) => (
               <motion.div key={index} variants={fadeInUp}>
@@ -221,15 +221,15 @@ export default function LandingPage() {
       </section>
 
       {/* Roles Section */}
-      <section id="roles" className="py-20">
-        <div className="container mx-auto px-4">
+      <section id="roles" className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Five Distinct Roles</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Five Distinct Roles</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Each role has its own dedicated dashboard, navigation, and feature set
               tailored to specific responsibilities.
@@ -241,7 +241,7 @@ export default function LandingPage() {
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
           >
             {roles.map((role, index) => (
               <motion.div key={index} variants={fadeInUp}>
@@ -272,8 +272,8 @@ export default function LandingPage() {
       </section>
 
       {/* Security Section */}
-      <section id="security" className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
+      <section id="security" className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -281,14 +281,14 @@ export default function LandingPage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Enterprise-Grade Security</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Enterprise-Grade Security</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
                 Your data is protected with industry-standard security practices
                 and modern authentication protocols.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
               {[
                 { title: 'JWT Authentication', desc: 'Access & refresh token strategy with HttpOnly secure cookies' },
                 { title: 'Password Security', desc: 'bcrypt hashing with 12 salt rounds for maximum protection' },
@@ -307,7 +307,7 @@ export default function LandingPage() {
                   <Card className="border">
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-3">
-                        <Shield className="h-5 w-5 text-primary" />
+                        <Shield className="h-5 w-5 text-primary shrink-0" />
                         <h3 className="font-semibold">{item.title}</h3>
                       </div>
                       <p className="text-sm text-muted-foreground mt-2">{item.desc}</p>
@@ -321,15 +321,15 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
+      <section className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="max-w-2xl mx-auto text-center"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
             <p className="text-muted-foreground mb-8">
               Join thousands of users who trust AuthPlatform for their authentication
               and profile management needs.

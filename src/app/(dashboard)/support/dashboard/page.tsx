@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, TicketCheck, Users, Clock, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, dashboardKey } from '@/store/data-store';
 
 interface SupportStats {
   openTickets: number;
@@ -29,41 +30,25 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0 },
 };
 
+interface SupportDashboardData {
+  stats: SupportStats;
+  recentTickets: RecentTicket[];
+}
+
 export default function SupportDashboardPage() {
-  const [stats, setStats] = useState<SupportStats | null>(null);
-  const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<SupportDashboardData>(
+    dashboardKey('support'),
+    '/api/support/dashboard',
+    { ttl: CLIENT_TTL.DASHBOARD_STATS }
+  );
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const res = await fetch('/api/support/dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats);
-          setRecentTickets(data.recentTickets || []);
-        }
-      } catch {
-        setStats({
-          openTickets: 0,
-          resolvedToday: 0,
-          avgResponseTime: '0 min',
-          totalUsersHelped: 0,
-          escalatedTickets: 0,
-          satisfactionRate: 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const stats = data?.stats ?? null;
+  const recentTickets = data?.recentTickets ?? [];
 
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -76,8 +61,8 @@ export default function SupportDashboardPage() {
   return (
     <div className="space-y-6">
       <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Support Dashboard</h1>
-        <p className="text-muted-foreground">Manage tickets, assist users, and track performance</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Support Dashboard</h1>
+        <p className="text-muted-foreground mt-1">Manage tickets, assist users, and track performance</p>
       </motion.div>
 
       {/* Stats Grid */}
@@ -85,56 +70,64 @@ export default function SupportDashboardPage() {
         variants={{ animate: { transition: { staggerChildren: 0.1 } } }}
         initial="initial"
         animate="animate"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
-              <TicketCheck className="h-4 w-4 text-blue-500" />
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <TicketCheck className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.openTickets || 0}</div>
-              <p className="text-xs text-muted-foreground">Awaiting response</p>
+              <p className="text-xs text-muted-foreground mt-1">Awaiting response</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Resolved Today</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.resolvedToday || 0}</div>
-              <p className="text-xs text-muted-foreground">Tickets closed today</p>
+              <p className="text-xs text-muted-foreground mt-1">Tickets closed today</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg. Response</CardTitle>
-              <Clock className="h-4 w-4 text-amber-500" />
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-amber-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.avgResponseTime || '0 min'}</div>
-              <p className="text-xs text-muted-foreground">First response time</p>
+              <p className="text-xs text-muted-foreground mt-1">First response time</p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={fadeInUp}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Users Helped</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-indigo-500" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalUsersHelped || 0}</div>
-              <p className="text-xs text-muted-foreground">Total assisted</p>
+              <p className="text-xs text-muted-foreground mt-1">Total assisted</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -145,27 +138,31 @@ export default function SupportDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        className="grid grid-cols-2 gap-3 sm:gap-6"
       >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Escalated Tickets</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.escalatedTickets || 0}</div>
-            <p className="text-xs text-muted-foreground">Require senior attention</p>
+            <p className="text-xs text-muted-foreground mt-1">Require senior attention</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Satisfaction Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.satisfactionRate || 0}%</div>
-            <p className="text-xs text-muted-foreground">Customer satisfaction score</p>
+            <p className="text-xs text-muted-foreground mt-1">Customer satisfaction score</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -179,7 +176,7 @@ export default function SupportDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TicketCheck className="h-5 w-5" />
+              <TicketCheck className="h-5 w-5 text-primary" />
               Recent Tickets
             </CardTitle>
             <CardDescription>Latest support requests</CardDescription>
@@ -188,15 +185,15 @@ export default function SupportDashboardPage() {
             {recentTickets.length > 0 ? (
               <div className="space-y-3">
                 {recentTickets.map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <TicketCheck className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{ticket.subject}</p>
-                        <p className="text-xs text-muted-foreground">Ticket #{ticket.id.slice(0, 8)}</p>
+                  <div key={ticket.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{ticket.subject}</p>
+                        <p className="text-xs text-muted-foreground truncate">Ticket #{ticket.id.slice(0, 8)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge
                         variant="outline"
                         className={

@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Search, Calendar, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedFetch } from '@/hooks/use-cached-fetch';
+import { CLIENT_TTL, activityKey } from '@/store/data-store';
 
 interface ActivityLogItem {
   id: string;
@@ -16,10 +18,9 @@ interface ActivityLogItem {
   createdAt: string;
 }
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
+interface ActivityData {
+  logs: ActivityLogItem[];
+}
 
 const actionColors: Record<string, string> = {
   LOGIN_SUCCESS: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -32,47 +33,38 @@ const actionColors: Record<string, string> = {
 };
 
 export default function ClientActivityPage() {
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useCachedFetch<ActivityData>(
+    activityKey('client'),
+    '/api/activity',
+    { ttl: CLIENT_TTL.ACTIVITY_LOGS }
+  );
+
+  const logs = data?.logs ?? [];
   const [search, setSearch] = useState('');
   const [moduleFilter, setModuleFilter] = useState('all');
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (moduleFilter !== 'all') params.set('module', moduleFilter);
-        if (search) params.set('search', search);
-
-        const res = await fetch(`/api/activity?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setLogs(data.logs || []);
-        }
-      } catch {
-        setLogs([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLogs();
-  }, [moduleFilter, search]);
-
   const modules = ['auth', 'profile', 'session', 'password'];
+
+  const filteredLogs = logs.filter((log) => {
+    const matchesSearch = !search ||
+      log.action.toLowerCase().includes(search.toLowerCase()) ||
+      log.module.toLowerCase().includes(search.toLowerCase());
+    const matchesModule = moduleFilter === 'all' || log.module === moduleFilter;
+    return matchesSearch && matchesModule;
+  });
 
   return (
     <div className="space-y-6">
-      <motion.div {...fadeInUp} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl font-bold">Activity</h1>
-        <p className="text-muted-foreground">Track your account activity and login history</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity</h1>
+        <p className="text-muted-foreground mt-1">Track your account activity and login history</p>
       </motion.div>
 
       {/* Filters */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -82,7 +74,7 @@ export default function ClientActivityPage() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <select
                   value={moduleFilter}
@@ -108,35 +100,35 @@ export default function ClientActivityPage() {
               <Activity className="h-5 w-5" />
               Your Activity
             </CardTitle>
-            <CardDescription>{logs.length} events recorded</CardDescription>
+            <CardDescription>{filteredLogs.length} events recorded</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loading && !data) ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
-            ) : logs.length > 0 ? (
+            ) : filteredLogs.length > 0 ? (
               <div className="space-y-2">
-                {logs.map((log, index) => (
+                {filteredLogs.map((log, index) => (
                   <motion.div
                     key={log.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="flex items-center justify-between py-3 px-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Badge
                         variant="outline"
                         className={actionColors[log.action] || 'bg-muted text-muted-foreground border-muted'}
                       >
                         {log.action}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">{log.module}</span>
+                      <span className="text-sm text-muted-foreground truncate">{log.module}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
                       <Calendar className="h-3 w-3" />
                       {new Date(log.createdAt).toLocaleDateString()}
                     </div>

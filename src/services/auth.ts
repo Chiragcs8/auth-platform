@@ -12,7 +12,7 @@ export async function loginService(
   formData: unknown,
   ipAddress?: string,
   userAgent?: string
-): Promise<ApiResponse<{ redirectUrl: string }>> {
+): Promise<ApiResponse<{ redirectUrl: string; userId: string; roleName: string }>> {
   const validated = loginSchema.safeParse(formData);
   if (!validated.success) {
     return { success: false, error: validated.error.issues[0].message };
@@ -73,7 +73,7 @@ export async function loginService(
 
   const redirectUrl = ROLE_DASHBOARD_MAP[user.role.roleName as RoleName] || "/client/dashboard";
 
-  return { success: true, data: { redirectUrl } };
+  return { success: true, data: { redirectUrl, userId: user.id, roleName: user.role.roleName as RoleName } };
 }
 
 // ─── Register Service ─────────────────────────────────────────
