@@ -76,8 +76,18 @@ export function Navbar({ session, onMobileMenuToggle }: NavbarProps) {
               <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
             </button>
 
-            {/* Mobile avatar (no dropdown, just opens menu) */}
-            <div className="md:hidden">
+            {/* Mobile: logout button + avatar */}
+            <div className="md:hidden flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                title="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
               <Avatar src={null} alt={session.fullName} size="sm" />
             </div>
 

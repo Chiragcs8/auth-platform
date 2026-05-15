@@ -173,19 +173,18 @@ export function Sidebar({ items, session, collapsed = false, onCollapsedChange }
               </motion.div>
             )}
           </AnimatePresence>
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-red-500"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              title="Log out"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )}
         </div>
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            className="w-full mt-3 h-9 flex items-center justify-start gap-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {loggingOut ? "Logging out..." : "Log out"}
+          </Button>
+        )}
         {collapsed && (
           <Button
             variant="ghost"
